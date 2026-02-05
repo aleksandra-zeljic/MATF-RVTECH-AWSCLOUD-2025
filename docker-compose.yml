@@ -1,6 +1,6 @@
 services:
   localstack:
-    container_name: matf-rvtech-localstack-martina
+    container_name: moj-rvtech-localstack
     image: localstack/localstack:latest
     ports:
       - "127.0.0.1:4566:4566"

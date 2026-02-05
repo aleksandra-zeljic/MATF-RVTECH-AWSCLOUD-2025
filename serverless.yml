@@ -1,4 +1,4 @@
-service: ev-punjaci-martina
+service: ev-punjaci-rvtech
 frameworkVersion: "3"
 
 plugins:
@@ -19,7 +19,7 @@ provider:
   region: us-east-1
   environment:
     CHARGERS_TABLE: Chargers
-    ALLOWED_ORIGIN: "http://punjaci-website.s3-website.localhost.localstack.cloud:4566"
+    ALLOWED_ORIGIN: "http://punjaci-website-rvtech.s3-website.localhost.localstack.cloud:4566"
     OCM_URL: "https://api.openchargemap.io/v3/poi"
     OCM_API_KEY: "PUT_YOUR_OCM_KEY_HERE"
 
@@ -60,7 +60,7 @@ resources:
     WebsiteBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: punjaci-website
+        BucketName: punjaci-website-rvtech
         AccessControl: PublicRead
         WebsiteConfiguration:
           IndexDocument: index.html

@@ -1,8 +1,8 @@
 {
   "service": {
-    "service": "ev-punjaci-martina",
+    "service": "ev-punjaci-rvtech",
     "serviceObject": {
-      "name": "ev-punjaci-martina"
+      "name": "ev-punjaci-rvtech"
     },
     "provider": {
       "name": "aws",
@@ -11,7 +11,7 @@
       "region": "us-east-1",
       "environment": {
         "CHARGERS_TABLE": "Chargers",
-        "ALLOWED_ORIGIN": "http://punjaci-website.s3-website.localhost.localstack.cloud:4566",
+        "ALLOWED_ORIGIN": "http://punjaci-website-rvtech.s3-website.localhost.localstack.cloud:4566",
         "OCM_URL": "https://api.openchargemap.io/v3/poi",
         "OCM_API_KEY": "PUT_YOUR_OCM_KEY_HERE"
       },
@@ -89,6 +89,314 @@
               }
             }
           },
+          "GetChargersByTownLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ev-punjaci-rvtech-dev-getChargersByTown"
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "ev-punjaci-rvtech",
+                        "dev",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup",
+                          "logs:TagResource"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ev-punjaci-rvtech-dev*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ev-punjaci-rvtech-dev*:*:*"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "ev-punjaci-rvtech",
+                    "dev",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "GetChargersByTownLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ev-punjaci-rvtech/dev/1770308506706-2026-02-05T16:21:46.706Z/ev-punjaci-rvtech.zip"
+              },
+              "Handler": "lambdas/getChargersByTown.handler",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ev-punjaci-rvtech-dev-getChargersByTown",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "CHARGERS_TABLE": "Chargers",
+                  "ALLOWED_ORIGIN": "http://punjaci-website-rvtech.s3-website.localhost.localstack.cloud:4566",
+                  "OCM_URL": "https://api.openchargemap.io/v3/poi",
+                  "OCM_API_KEY": "PUT_YOUR_OCM_KEY_HERE"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "GetChargersByTownLogGroup"
+            ]
+          },
+          "GetChargersByTownLambdaVersionMKfacJ26HOaUAH4zCHawyOZ9wK6S93K2aRf3pOepC0": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "GetChargersByTownLambdaFunction"
+              },
+              "CodeSha256": "4+SS+ILhoI3IjbPx2Ov+wV86jGbmTcRBebUyXPBERMI="
+            }
+          },
+          "ApiGatewayRestApi": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Properties": {
+              "Name": "dev-ev-punjaci-rvtech",
+              "EndpointConfiguration": {
+                "Types": [
+                  "EDGE"
+                ]
+              },
+              "Policy": ""
+            }
+          },
+          "ApiGatewayResourceChargers": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Fn::GetAtt": [
+                  "ApiGatewayRestApi",
+                  "RootResourceId"
+                ]
+              },
+              "PathPart": "chargers",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceChargersTownVar": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Ref": "ApiGatewayResourceChargers"
+              },
+              "PathPart": "{town}",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayMethodChargersTownVarGet": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "GET",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceChargersTownVar"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "GetChargersByTownLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "GetChargersByTownLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodChargersTownVarOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "OPTIONS",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceChargersTownVar"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "GetChargersByTownLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "GetChargersByTownLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayDeployment1770308501686": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "Properties": {
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "StageName": "dev"
+            },
+            "DependsOn": [
+              "ApiGatewayMethodChargersTownVarGet",
+              "ApiGatewayMethodChargersTownVarOptions"
+            ]
+          },
+          "GetChargersByTownLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "GetChargersByTownLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
           "ChargersTable": {
             "Type": "AWS::DynamoDB::Table",
             "Properties": {
@@ -129,7 +437,7 @@
           "WebsiteBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
-              "BucketName": "punjaci-website",
+              "BucketName": "punjaci-website-rvtech",
               "AccessControl": "PublicRead",
               "WebsiteConfiguration": {
                 "IndexDocument": "index.html",
@@ -174,7 +482,42 @@
               "Ref": "ServerlessDeploymentBucket"
             },
             "Export": {
-              "Name": "sls-ev-punjaci-martina-dev-ServerlessDeploymentBucketName"
+              "Name": "sls-ev-punjaci-rvtech-dev-ServerlessDeploymentBucketName"
+            }
+          },
+          "GetChargersByTownLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "GetChargersByTownLambdaVersionMKfacJ26HOaUAH4zCHawyOZ9wK6S93K2aRf3pOepC0"
+            },
+            "Export": {
+              "Name": "sls-ev-punjaci-rvtech-dev-GetChargersByTownLambdaFunctionQualifiedArn"
+            }
+          },
+          "ServiceEndpoint": {
+            "Description": "URL of the service endpoint",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "ApiGatewayRestApi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/dev"
+                ]
+              ]
+            },
+            "Export": {
+              "Name": "sls-ev-punjaci-rvtech-dev-ServiceEndpoint"
             }
           }
         }
@@ -260,7 +603,8 @@
             }
           }
         }
-      }
+      },
+      "vpc": {}
     },
     "custom": {
       "localstack": {
@@ -276,7 +620,34 @@
       "serverless-localstack"
     ],
     "pluginsData": {},
-    "functions": {},
+    "functions": {
+      "getChargersByTown": {
+        "handler": "lambdas/getChargersByTown.handler",
+        "events": [
+          {
+            "http": {
+              "path": "chargers/{town}",
+              "method": "get",
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "http": {
+              "path": "chargers/{town}",
+              "method": "options",
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "ev-punjaci-rvtech-dev-getChargersByTown",
+        "package": {},
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "GetChargersByTownLambdaVersionMKfacJ26HOaUAH4zCHawyOZ9wK6S93K2aRf3pOepC0"
+      }
+    },
     "resources": {
       "Resources": {
         "ChargersTable": {
@@ -319,7 +690,7 @@
         "WebsiteBucket": {
           "Type": "AWS::S3::Bucket",
           "Properties": {
-            "BucketName": "punjaci-website",
+            "BucketName": "punjaci-website-rvtech",
             "AccessControl": "PublicRead",
             "WebsiteConfiguration": {
               "IndexDocument": "index.html",
@@ -363,7 +734,7 @@
     "configValidationMode": "warn",
     "serviceFilename": "serverless.yml",
     "initialServerlessConfig": {
-      "service": "ev-punjaci-martina",
+      "service": "ev-punjaci-rvtech",
       "frameworkVersion": "3",
       "plugins": {
         "$ref": "$[\"service\"][\"plugins\"]"
@@ -374,15 +745,19 @@
       "provider": {
         "$ref": "$[\"service\"][\"provider\"]"
       },
+      "functions": {
+        "$ref": "$[\"service\"][\"functions\"]"
+      },
       "resources": {
         "$ref": "$[\"service\"][\"resources\"]"
       }
     },
     "layers": {},
-    "isDashboardMonitoringPreconfigured": false
+    "isDashboardMonitoringPreconfigured": false,
+    "artifact": "/home/aleksandra/Desktop/XD/moj-rvtech-projekat/.serverless/ev-punjaci-rvtech.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/ev-punjaci-martina/dev/1769794829046-2026-01-30T17:40:29.046Z",
-    "artifact": ""
+    "artifactDirectoryName": "serverless/ev-punjaci-rvtech/dev/1770308506706-2026-02-05T16:21:46.706Z",
+    "artifact": "ev-punjaci-rvtech.zip"
   }
 }
