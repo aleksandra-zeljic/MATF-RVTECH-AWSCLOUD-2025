@@ -13,7 +13,7 @@
         "CHARGERS_TABLE": "Chargers",
         "ALLOWED_ORIGIN": "http://punjaci-website-rvtech.s3-website.localhost.localstack.cloud:4566",
         "OCM_URL": "https://api.openchargemap.io/v3/poi",
-        "OCM_API_KEY": "PUT_YOUR_OCM_KEY_HERE"
+        "OCM_API_KEY": "585594ec-573a-44ca-95df-00e56d096f89"
       },
       "versionFunctions": true,
       "compiledCloudFormationTemplate": {
@@ -93,6 +93,12 @@
             "Type": "AWS::Logs::LogGroup",
             "Properties": {
               "LogGroupName": "/aws/lambda/ev-punjaci-rvtech-dev-getChargersByTown"
+            }
+          },
+          "SyncOCMdataLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ev-punjaci-rvtech-dev-syncOCMdata"
             }
           },
           "IamRoleLambdaExecution": {
@@ -180,7 +186,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ev-punjaci-rvtech/dev/1770309423892-2026-02-05T16:37:03.892Z/ev-punjaci-rvtech.zip"
+                "S3Key": "serverless/ev-punjaci-rvtech/dev/1770315850373-2026-02-05T18:24:10.373Z/ev-punjaci-rvtech.zip"
               },
               "Handler": "lambdas/getChargersByTown.handler",
               "Runtime": "nodejs18.x",
@@ -193,7 +199,7 @@
                   "CHARGERS_TABLE": "Chargers",
                   "ALLOWED_ORIGIN": "http://punjaci-website-rvtech.s3-website.localhost.localstack.cloud:4566",
                   "OCM_URL": "https://api.openchargemap.io/v3/poi",
-                  "OCM_API_KEY": "PUT_YOUR_OCM_KEY_HERE"
+                  "OCM_API_KEY": "585594ec-573a-44ca-95df-00e56d096f89"
                 }
               },
               "Role": {
@@ -207,15 +213,60 @@
               "GetChargersByTownLogGroup"
             ]
           },
-          "GetChargersByTownLambdaVersionPHavgd3AP13FwUeUvZEJNcNgtsAVU81B16HY3iBs8": {
+          "SyncOCMdataLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ev-punjaci-rvtech/dev/1770315850373-2026-02-05T18:24:10.373Z/ev-punjaci-rvtech.zip"
+              },
+              "Handler": "lambdas/sync.handler",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ev-punjaci-rvtech-dev-syncOCMdata",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Description": "Sync chargers from Open Charge Map to DynamoDB",
+              "Environment": {
+                "Variables": {
+                  "CHARGERS_TABLE": "Chargers",
+                  "ALLOWED_ORIGIN": "http://punjaci-website-rvtech.s3-website.localhost.localstack.cloud:4566",
+                  "OCM_URL": "https://api.openchargemap.io/v3/poi",
+                  "OCM_API_KEY": "585594ec-573a-44ca-95df-00e56d096f89"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "SyncOCMdataLogGroup"
+            ]
+          },
+          "GetChargersByTownLambdaVersionQbucmO3GnXFAJN0IhJXGruyMYcdTNCtkJ5q6EoVVyQ": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetChargersByTownLambdaFunction"
               },
-              "CodeSha256": "NnYS4SxQ4l+Rt6xEpwOR4IQjENii+hkOZhOMvkYCssg=",
+              "CodeSha256": "m2j+3Unw14BKaXuKvfcY6mjG2931H5zE9JHLvViJsgY=",
               "Description": "Get chargers from DynamoDB by town (GSI TownIndex)"
+            }
+          },
+          "SyncOCMdataLambdaVersionhdKpAfCMaS1t4WGn7G8ks4PjrCxw04dLKBZCBVh0nY": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "SyncOCMdataLambdaFunction"
+              },
+              "CodeSha256": "m2j+3Unw14BKaXuKvfcY6mjG2931H5zE9JHLvViJsgY=",
+              "Description": "Sync chargers from Open Charge Map to DynamoDB"
             }
           },
           "ApiGatewayRestApi": {
@@ -257,6 +308,21 @@
               }
             }
           },
+          "ApiGatewayResourceSync": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Fn::GetAtt": [
+                  "ApiGatewayRestApi",
+                  "RootResourceId"
+                ]
+              },
+              "PathPart": "sync",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
           "ApiGatewayMethodChargersTownVarOptions": {
             "Type": "AWS::ApiGateway::Method",
             "Properties": {
@@ -275,7 +341,7 @@
               ],
               "RequestParameters": {},
               "Integration": {
-                "Type": "AWS_PROXY",
+                "Type": "MOCK",
                 "RequestTemplates": {
                   "application/json": "{statusCode:200}"
                 },
@@ -292,43 +358,60 @@
                       "application/json": ""
                     }
                   }
-                ],
-                "IntegrationHttpMethod": "POST",
-                "Uri": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":apigateway:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":lambda:path/2015-03-31/functions/",
-                      {
-                        "Fn::GetAtt": [
-                          "GetChargersByTownLambdaFunction",
-                          "Arn"
-                        ]
-                      },
-                      "/invocations"
-                    ]
-                  ]
-                }
+                ]
               },
               "ResourceId": {
                 "Ref": "ApiGatewayResourceChargersTownVar"
               },
               "RestApiId": {
                 "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayMethodSyncOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "MOCK",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ]
               },
-              "ApiKeyRequired": false
-            },
-            "DependsOn": [
-              "GetChargersByTownLambdaPermissionApiGateway"
-            ]
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceSync"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
           },
           "ApiGatewayMethodChargersTownVarGet": {
             "Type": "AWS::ApiGateway::Method",
@@ -376,7 +459,53 @@
               "GetChargersByTownLambdaPermissionApiGateway"
             ]
           },
-          "ApiGatewayDeployment1770309417947": {
+          "ApiGatewayMethodSyncGet": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "GET",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceSync"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "SyncOCMdataLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "SyncOCMdataLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayDeployment1770315845359": {
             "Type": "AWS::ApiGateway::Deployment",
             "Properties": {
               "RestApiId": {
@@ -386,8 +515,9 @@
             },
             "DependsOn": [
               "ApiGatewayMethodChargersTownVarOptions",
+              "ApiGatewayMethodSyncOptions",
               "ApiGatewayMethodChargersTownVarGet",
-              "ApiGatewayMethodChargersTownVarOptions"
+              "ApiGatewayMethodSyncGet"
             ]
           },
           "GetChargersByTownLambdaPermissionApiGateway": {
@@ -396,6 +526,43 @@
               "FunctionName": {
                 "Fn::GetAtt": [
                   "GetChargersByTownLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "SyncOCMdataLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "SyncOCMdataLambdaFunction",
                   "Arn"
                 ]
               },
@@ -518,10 +685,19 @@
           "GetChargersByTownLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetChargersByTownLambdaVersionPHavgd3AP13FwUeUvZEJNcNgtsAVU81B16HY3iBs8"
+              "Ref": "GetChargersByTownLambdaVersionQbucmO3GnXFAJN0IhJXGruyMYcdTNCtkJ5q6EoVVyQ"
             },
             "Export": {
               "Name": "sls-ev-punjaci-rvtech-dev-GetChargersByTownLambdaFunctionQualifiedArn"
+            }
+          },
+          "SyncOCMdataLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "SyncOCMdataLambdaVersionhdKpAfCMaS1t4WGn7G8ks4PjrCxw04dLKBZCBVh0nY"
+            },
+            "Export": {
+              "Name": "sls-ev-punjaci-rvtech-dev-SyncOCMdataLambdaFunctionQualifiedArn"
             }
           },
           "ServiceEndpoint": {
@@ -678,16 +854,29 @@
               },
               "integration": "AWS_PROXY"
             }
-          },
+          }
+        ],
+        "name": "ev-punjaci-rvtech-dev-getChargersByTown",
+        "package": {},
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "GetChargersByTownLambdaVersionQbucmO3GnXFAJN0IhJXGruyMYcdTNCtkJ5q6EoVVyQ"
+      },
+      "syncOCMdata": {
+        "handler": "lambdas/sync.handler",
+        "description": "Sync chargers from Open Charge Map to DynamoDB",
+        "events": [
           {
             "http": {
-              "path": "chargers/{town}",
-              "method": "options",
+              "path": "sync",
+              "method": "get",
               "cors": {
                 "origin": "*",
                 "methods": [
                   "OPTIONS",
-                  "OPTIONS"
+                  "GET"
                 ],
                 "headers": [
                   "Content-Type",
@@ -704,13 +893,13 @@
             }
           }
         ],
-        "name": "ev-punjaci-rvtech-dev-getChargersByTown",
+        "name": "ev-punjaci-rvtech-dev-syncOCMdata",
         "package": {},
         "memory": 1024,
         "timeout": 6,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetChargersByTownLambdaVersionPHavgd3AP13FwUeUvZEJNcNgtsAVU81B16HY3iBs8"
+        "versionLogicalId": "SyncOCMdataLambdaVersionhdKpAfCMaS1t4WGn7G8ks4PjrCxw04dLKBZCBVh0nY"
       }
     },
     "resources": {
@@ -822,7 +1011,7 @@
     "artifact": "/home/aleksandra/Desktop/XD/moj-rvtech-projekat/.serverless/ev-punjaci-rvtech.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/ev-punjaci-rvtech/dev/1770309423892-2026-02-05T16:37:03.892Z",
+    "artifactDirectoryName": "serverless/ev-punjaci-rvtech/dev/1770315850373-2026-02-05T18:24:10.373Z",
     "artifact": "ev-punjaci-rvtech.zip"
   }
 }

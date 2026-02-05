@@ -10,7 +10,11 @@
   />
 
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
     header {
       padding: 10px;
       background: #4f46e5;
@@ -19,25 +23,51 @@
       gap: 10px;
       align-items: center;
     }
-    #map { height: calc(100vh - 50px); }
-    input, button { padding: 6px; }
+
+    #map {
+      height: calc(100vh - 50px);
+    }
+
+    input, button {
+      padding: 6px;
+      border-radius: 4px;
+      border: none;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    #count {
+      margin-left: auto;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
 <header>
   <strong>⚡ EV Punjači – Srbija</strong>
-  <input id="town" value="Belgrade" />
-  <button onclick="loadChargers()">Pretraži</button>
+
+  <input id="town" value="Beograd" />
+  <button id="btn">Pretraži</button>
+  <button id="sync">Sync OCM</button>
+
+  <span id="count">Prikazano 0 punjača</span>
 </header>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-  // 🔴 OVO MENJAŠ POSLE DEPLOY-A
-  const API_ID = "PASTE_API_ID_HERE";
-  const API_BASE = `http://localhost:4566/restapis/${API_ID}/dev/_user_request_`;
+  /* ================= CONFIG ================= */
+
+  const API_ID = "pmzbxsfmj8";      // ⬅ menjamo samo ovo kad redeploy
+  const STAGE = "dev";
+  const API_BASE = `http://localhost:4566/restapis/${API_ID}/${STAGE}/_user_request_`;
+
+  /* ================= MAP ================= */
 
   const map = L.map("map").setView([44.0165, 21.0059], 7);
 
@@ -45,26 +75,118 @@
     attribution: "© OpenStreetMap"
   }).addTo(map);
 
-  const markers = L.layerGroup().addTo(map);
+  const markers = L.featureGroup().addTo(map);
+
+  /* ================= HELPERS ================= */
+
+  function normalizeTownInput(town) {
+    return town
+      .toLowerCase()
+      .split(" ")
+      .filter(Boolean)
+      .map(w => w[0].toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+
+  function setCount(text) {
+    document.getElementById("count").textContent = text;
+  }
+
+  /* ================= LOAD CHARGERS ================= */
 
   async function loadChargers() {
-    const town = document.getElementById("town").value;
+    let town = document.getElementById("town").value.trim();
+
+    if (!town) {
+      alert("Unesi grad (npr. Beograd)");
+      return;
+    }
+
+    town = normalizeTownInput(town);
     markers.clearLayers();
+    setCount("Učitavanje...");
 
-    const res = await fetch(`${API_BASE}/chargers/${town}`);
-    const data = await res.json();
+    try {
+      const url = `${API_BASE}/chargers/${encodeURIComponent(town)}`;
+      console.log("Fetching:", url);
 
-    data.chargers.forEach(c => {
-      if (!c.latitude || !c.longitude) return;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
-      const m = L.marker([c.latitude, c.longitude]).addTo(markers);
+      const data = await res.json();
+      const list = data.chargers || [];
+
+      if (list.length === 0) {
+        setCount("Nema punjača");
+        alert(`Nema punjača za grad: ${town}`);
+        return;
+      }
+
+      list.forEach(c => {
+      const lat = Number(c.latitude);
+      const lon = Number(c.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+      const title = c.title || "Punjač";
+      const addr  = c.addressLine1 || "N/A";
+      const town2 = c.town || "N/A";
+      const postcode = c.postcode || "N/A";
+      const points = (c.numberOfPoints ?? "N/A");
+      const verified = (c.isRecentlyVerified ? "Da" : "Ne");
+      const id = c.chargerId || "N/A";
+
+      const m = L.marker([lat, lon]).addTo(markers);
+
       m.bindPopup(`
-        <b>${c.title || "Punjač"}</b><br/>
-        ${c.addressLine1 || ""}<br/>
-        ${c.town}
-      `);
-    });
+      <b>${title}</b><br/>
+      <b>Adresa:</b> ${addr}<br/>
+      <b>Grad:</b> ${town2} (${postcode})<br/>
+      <b>Broj priključaka:</b> ${points}<br/>
+      <b>Verifikovan:</b> ${verified}<br/>
+      <b>ID:</b> ${id}
+    `);
+  });
+
+
+      setCount(`Prikazano ${list.length} punjača`);
+
+      const bounds = markers.getBounds();
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }
+
+    } catch (err) {
+      console.error(err);
+      setCount("Greška");
+      alert("Greška pri učitavanju (vidi Console)");
+    }
   }
+
+  /* ================= SYNC OCM ================= */
+
+  async function syncOCM() {
+    setCount("Sinhronizacija...");
+    try {
+      const res = await fetch(`${API_BASE}/sync`);
+      if (!res.ok) throw new Error("Sync failed");
+      await res.json();
+      alert("OCM sinhronizovan ✔");
+      loadChargers();
+    } catch (e) {
+      console.error(e);
+      alert("Greška pri sync-u");
+    }
+  }
+
+  /* ================= EVENTS ================= */
+
+  document.getElementById("btn").addEventListener("click", loadChargers);
+  document.getElementById("sync").addEventListener("click", syncOCM);
+
+  // automatski ucitaj Beograd
+  //loadChargers();
 </script>
 
 </body>

@@ -4,10 +4,15 @@
   "private": true,
   "scripts": {
     "up": "docker compose up -d",
-    "down": "docker compose down -v",
+    "down": "docker compose down",
+    "reset": "docker compose down -v",
     "deploy": "serverless deploy",
     "redeploy": "npm run down && npm run up && sleep 5 && npm run deploy",
-    "deploy-frontend-fixed-bucket": "awslocal s3 sync ./web s3://punjaci-website-rvtech"
+    "deploy-frontend-fixed-bucket": "aws --endpoint-url=http://localhost:4566 s3 sync ./web s3://punjaci-website-rvtech",
+    "update-api-id": "node scripts/update-api-id.js",
+    "deploy-frontend": "aws --endpoint-url=http://localhost:4566 s3 sync ./web s3://punjaci-website-rvtech",
+    "deploy-all": "npm run deploy && npm run update-api-id && npm run deploy-frontend",
+    "start": "npm run up && npm run deploy && npm run deploy-frontend"
   },
   "devDependencies": {
     "serverless": "^3.40.0",
