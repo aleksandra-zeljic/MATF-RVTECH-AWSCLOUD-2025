@@ -51,7 +51,6 @@
 
   <input id="town" value="Beograd" />
   <button id="btn">Pretraži</button>
-  <button id="sync">Sync OCM</button>
 
   <span id="count">Prikazano 0 punjača</span>
 </header>
@@ -66,6 +65,8 @@
   const API_ID = "pmzbxsfmj8";      // ⬅ menjamo samo ovo kad redeploy
   const STAGE = "dev";
   const API_BASE = `http://localhost:4566/restapis/${API_ID}/${STAGE}/_user_request_`;
+  const AUTO_SYNC_ON_LOAD = true;
+  const OSRM_BASE = "https://router.project-osrm.org";
 
   /* ================= MAP ================= */
 
@@ -76,6 +77,10 @@
   }).addTo(map);
 
   const markers = L.featureGroup().addTo(map);
+  const nearestLayer = L.layerGroup().addTo(map);
+  const routeLayer = L.layerGroup().addTo(map);
+  let lastChargers = [];
+  let lastTown = "";
 
   /* ================= HELPERS ================= */
 
@@ -90,6 +95,89 @@
 
   function setCount(text) {
     document.getElementById("count").textContent = text;
+  }
+
+  
+
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    const toRad = (d) => (d * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function formatDuration(seconds) {
+    const mins = Math.round(seconds / 60);
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h}h ${m}m`;
+  }
+
+  function findNearestByAir(clickLat, clickLng, list) {
+    let nearest = null;
+    let minDist = Infinity;
+    for (const c of list) {
+      const lat = Number(c.latitude);
+      const lon = Number(c.longitude);
+      const d = haversineKm(clickLat, clickLng, lat, lon);
+      if (d < minDist) {
+        minDist = d;
+        nearest = c;
+      }
+    }
+    return { nearest, distanceKm: Number.isFinite(minDist) ? minDist : null };
+  }
+
+  function renderNearest({ nearest, distanceKm, durationSec, label, routeGeoJson }) {
+    if (!nearest) return;
+
+    nearestLayer.clearLayers();
+    routeLayer.clearLayers();
+
+    if (routeGeoJson) {
+      L.geoJSON(routeGeoJson, { style: { color: "#2563eb", weight: 4 } }).addTo(routeLayer);
+    }
+
+    const nLat = Number(nearest.latitude);
+    const nLon = Number(nearest.longitude);
+    const title = nearest.title || "Punjač";
+    const addr = nearest.addressLine1 || "N/A";
+    const town2 = nearest.town || "N/A";
+    const postcode = nearest.postcode || "N/A";
+    const points = (nearest.numberOfPoints ?? "N/A");
+    const verified = (nearest.isRecentlyVerified ? "Da" : "Ne");
+    const id = nearest.chargerId || "N/A";
+
+    const marker = L.circleMarker([nLat, nLon], {
+      radius: 9,
+      color: "#ef4444",
+      weight: 2,
+      fillColor: "#f87171",
+      fillOpacity: 0.8,
+    }).addTo(nearestLayer);
+
+    marker.bindPopup(`
+      <b>Najbliži punjač ${label}</b><br/>
+      <b>${title}</b><br/>
+      <b>Udaljenost:</b> ${distanceKm?.toFixed(2)} km<br/>
+      ${durationSec ? `<b>Vreme:</b> ${formatDuration(durationSec)}<br/>` : ""}
+      <b>Adresa:</b> ${addr}<br/>
+      <b>Grad:</b> ${town2} (${postcode})<br/>
+      <b>Broj priključaka:</b> ${points}<br/>
+      <b>Verifikovan:</b> ${verified}<br/>
+      <b>ID:</b> ${id}
+    `).openPopup();
+
+    if (distanceKm != null) {
+      setCount(`Najbliži ${label}: ${distanceKm.toFixed(2)} km`);
+    } else {
+      setCount(`Najbliži ${label}`);
+    }
   }
 
   /* ================= LOAD CHARGERS ================= */
@@ -117,6 +205,8 @@
 
       const data = await res.json();
       const list = data.chargers || [];
+      lastChargers = list;
+      lastTown = town;
 
       if (list.length === 0) {
         setCount("Nema punjača");
@@ -150,7 +240,7 @@
   });
 
 
-      setCount(`Prikazano ${list.length} punjača`);
+      setCount(`Prikazano ${list.length} punjača${lastTown ? ` za: ${lastTown}` : ""}`);
 
       const bounds = markers.getBounds();
       if (bounds.isValid()) {
@@ -166,27 +256,137 @@
 
   /* ================= SYNC OCM ================= */
 
-  async function syncOCM() {
+  async function syncOCM({ silent = false } = {}) {
     setCount("Sinhronizacija...");
     try {
       const res = await fetch(`${API_BASE}/sync`);
       if (!res.ok) throw new Error("Sync failed");
       await res.json();
-      alert("OCM sinhronizovan ✔");
+      if (!silent) {
+        alert("OCM sinhronizovan ✔");
+      }
       loadChargers();
     } catch (e) {
       console.error(e);
-      alert("Greška pri sync-u");
+      if (!silent) {
+        alert("Greška pri sync-u");
+      }
     }
   }
 
   /* ================= EVENTS ================= */
 
   document.getElementById("btn").addEventListener("click", loadChargers);
-  document.getElementById("sync").addEventListener("click", syncOCM);
 
-  // automatski ucitaj Beograd
-  //loadChargers();
+  map.on("click", async (e) => {
+    if (!lastChargers.length) {
+      alert("Nema učitanih punjača. Prvo uradi pretragu.");
+      return;
+    }
+
+    const candidates = lastChargers.filter((c) => {
+      const lat = Number(c.latitude);
+      const lon = Number(c.longitude);
+      return Number.isFinite(lat) && Number.isFinite(lon);
+    });
+
+    if (candidates.length === 0) {
+      alert("Nema punjača sa validnim koordinatama.");
+      return;
+    }
+
+    const { lat: clickLat, lng: clickLng } = e.latlng;
+    setCount("Računam rutu...");
+
+    const ranked = candidates
+      .map((c) => {
+        const lat = Number(c.latitude);
+        const lon = Number(c.longitude);
+        return { c, d: haversineKm(clickLat, clickLng, lat, lon) };
+      })
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 20);
+
+    const coords = [
+      `${clickLng},${clickLat}`,
+      ...ranked.map(({ c }) => `${Number(c.longitude)},${Number(c.latitude)}`),
+    ];
+
+    let nearest = null;
+    let routeDistanceKm = null;
+    let routeDuration = null;
+    let routeGeoJson = null;
+
+    try {
+      const tableUrl = `${OSRM_BASE}/table/v1/driving/${coords.join(";")}?sources=0&annotations=distance,duration`;
+      const tableRes = await fetch(tableUrl);
+      if (!tableRes.ok) throw new Error("OSRM table failed");
+      const tableData = await tableRes.json();
+      const distances = tableData.distances?.[0] || [];
+      const durations = tableData.durations?.[0] || [];
+
+      let bestIdx = -1;
+      let bestDist = Infinity;
+      for (let i = 1; i < distances.length; i++) {
+        const d = distances[i];
+        if (Number.isFinite(d) && d < bestDist) {
+          bestDist = d;
+          bestIdx = i - 1;
+        }
+      }
+
+      if (bestIdx >= 0) {
+        nearest = ranked[bestIdx].c;
+        routeDistanceKm = bestDist / 1000;
+        routeDuration = durations[bestIdx + 1];
+      }
+    } catch (err) {
+      console.error(err);
+      alert("OSRM nije dostupan. Računam vazdušnu udaljenost.");
+      const fallback = findNearestByAir(clickLat, clickLng, candidates);
+      renderNearest({
+        nearest: fallback.nearest,
+        distanceKm: fallback.distanceKm,
+        durationSec: null,
+        label: "(vazdušno)",
+        routeGeoJson: null,
+      });
+      return;
+    }
+
+    if (!nearest) {
+      const fallback = findNearestByAir(clickLat, clickLng, candidates);
+      renderNearest({
+        nearest: fallback.nearest,
+        distanceKm: fallback.distanceKm,
+        durationSec: null,
+        label: "(vazdušno)",
+        routeGeoJson: null,
+      });
+      return;
+    }
+
+    const nLat = Number(nearest.latitude);
+    const nLon = Number(nearest.longitude);
+    const routeUrl = `${OSRM_BASE}/route/v1/driving/${clickLng},${clickLat};${nLon},${nLat}?overview=full&geometries=geojson`;
+    const routeRes = await fetch(routeUrl);
+    if (routeRes.ok) {
+      const routeData = await routeRes.json();
+      routeGeoJson = routeData.routes?.[0]?.geometry || null;
+    }
+
+    renderNearest({
+      nearest,
+      distanceKm: routeDistanceKm,
+      durationSec: routeDuration,
+      label: "po ruti",
+      routeGeoJson,
+    });
+  });
+
+  if (AUTO_SYNC_ON_LOAD) {
+    setTimeout(() => syncOCM({ silent: true }), 500);
+  }
 </script>
 
 </body>

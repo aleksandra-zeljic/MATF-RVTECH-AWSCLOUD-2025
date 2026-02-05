@@ -12,7 +12,8 @@
     "update-api-id": "node scripts/update-api-id.js",
     "deploy-frontend": "aws --endpoint-url=http://localhost:4566 s3 sync ./web s3://punjaci-website-rvtech",
     "deploy-all": "npm run deploy && npm run update-api-id && npm run deploy-frontend",
-    "start": "npm run up && npm run deploy && npm run deploy-frontend"
+    "start": "npm run up && npm run deploy && npm run deploy-frontend",
+    "start-local": "bash scripts/start-local.sh"
   },
   "devDependencies": {
     "serverless": "^3.40.0",

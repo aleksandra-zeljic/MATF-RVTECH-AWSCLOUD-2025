@@ -168,7 +168,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ev-punjaci-rvtech/dev/1770315850373-2026-02-05T18:24:10.373Z/ev-punjaci-rvtech.zip"
+          "S3Key": "serverless/ev-punjaci-rvtech/dev/1770319189097-2026-02-05T19:19:49.097Z/ev-punjaci-rvtech.zip"
         },
         "Handler": "lambdas/getChargersByTown.handler",
         "Runtime": "nodejs18.x",
@@ -202,7 +202,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ev-punjaci-rvtech/dev/1770315850373-2026-02-05T18:24:10.373Z/ev-punjaci-rvtech.zip"
+          "S3Key": "serverless/ev-punjaci-rvtech/dev/1770319189097-2026-02-05T19:19:49.097Z/ev-punjaci-rvtech.zip"
         },
         "Handler": "lambdas/sync.handler",
         "Runtime": "nodejs18.x",
@@ -229,25 +229,25 @@
         "SyncOCMdataLogGroup"
       ]
     },
-    "GetChargersByTownLambdaVersionQbucmO3GnXFAJN0IhJXGruyMYcdTNCtkJ5q6EoVVyQ": {
+    "GetChargersByTownLambdaVersionKFYd3FblhnFMufinAkHxKtv1zMyENxA9y6NlHcQ9vA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetChargersByTownLambdaFunction"
         },
-        "CodeSha256": "m2j+3Unw14BKaXuKvfcY6mjG2931H5zE9JHLvViJsgY=",
+        "CodeSha256": "UqdVPYNzEDgWh57w7lhp0KjXg9Jvrg/MP80hW0Ig6tY=",
         "Description": "Get chargers from DynamoDB by town (GSI TownIndex)"
       }
     },
-    "SyncOCMdataLambdaVersionhdKpAfCMaS1t4WGn7G8ks4PjrCxw04dLKBZCBVh0nY": {
+    "SyncOCMdataLambdaVersionRjgArLYFtxwUMPyxvSv3AC4FH5HfoL95sE26J0E": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "SyncOCMdataLambdaFunction"
         },
-        "CodeSha256": "m2j+3Unw14BKaXuKvfcY6mjG2931H5zE9JHLvViJsgY=",
+        "CodeSha256": "UqdVPYNzEDgWh57w7lhp0KjXg9Jvrg/MP80hW0Ig6tY=",
         "Description": "Sync chargers from Open Charge Map to DynamoDB"
       }
     },
@@ -487,7 +487,7 @@
         "SyncOCMdataLambdaPermissionApiGateway"
       ]
     },
-    "ApiGatewayDeployment1770315845359": {
+    "ApiGatewayDeployment1770319184209": {
       "Type": "AWS::ApiGateway::Deployment",
       "Properties": {
         "RestApiId": {
@@ -667,7 +667,7 @@
     "GetChargersByTownLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetChargersByTownLambdaVersionQbucmO3GnXFAJN0IhJXGruyMYcdTNCtkJ5q6EoVVyQ"
+        "Ref": "GetChargersByTownLambdaVersionKFYd3FblhnFMufinAkHxKtv1zMyENxA9y6NlHcQ9vA"
       },
       "Export": {
         "Name": "sls-ev-punjaci-rvtech-dev-GetChargersByTownLambdaFunctionQualifiedArn"
@@ -676,7 +676,7 @@
     "SyncOCMdataLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "SyncOCMdataLambdaVersionhdKpAfCMaS1t4WGn7G8ks4PjrCxw04dLKBZCBVh0nY"
+        "Ref": "SyncOCMdataLambdaVersionRjgArLYFtxwUMPyxvSv3AC4FH5HfoL95sE26J0E"
       },
       "Export": {
         "Name": "sls-ev-punjaci-rvtech-dev-SyncOCMdataLambdaFunctionQualifiedArn"
