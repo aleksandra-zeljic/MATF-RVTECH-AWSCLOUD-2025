@@ -162,13 +162,14 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ev-punjaci-rvtech/dev/1770308506706-2026-02-05T16:21:46.706Z/ev-punjaci-rvtech.zip"
+          "S3Key": "serverless/ev-punjaci-rvtech/dev/1770309423892-2026-02-05T16:37:03.892Z/ev-punjaci-rvtech.zip"
         },
         "Handler": "lambdas/getChargersByTown.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "ev-punjaci-rvtech-dev-getChargersByTown",
         "MemorySize": 1024,
         "Timeout": 6,
+        "Description": "Get chargers from DynamoDB by town (GSI TownIndex)",
         "Environment": {
           "Variables": {
             "CHARGERS_TABLE": "Chargers",
@@ -188,14 +189,15 @@
         "GetChargersByTownLogGroup"
       ]
     },
-    "GetChargersByTownLambdaVersionMKfacJ26HOaUAH4zCHawyOZ9wK6S93K2aRf3pOepC0": {
+    "GetChargersByTownLambdaVersionPHavgd3AP13FwUeUvZEJNcNgtsAVU81B16HY3iBs8": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetChargersByTownLambdaFunction"
         },
-        "CodeSha256": "4+SS+ILhoI3IjbPx2Ov+wV86jGbmTcRBebUyXPBERMI="
+        "CodeSha256": "NnYS4SxQ4l+Rt6xEpwOR4IQjENii+hkOZhOMvkYCssg=",
+        "Description": "Get chargers from DynamoDB by town (GSI TownIndex)"
       }
     },
     "ApiGatewayRestApi": {
@@ -236,6 +238,79 @@
           "Ref": "ApiGatewayRestApi"
         }
       }
+    },
+    "ApiGatewayMethodChargersTownVarOptions": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "MethodResponses": [
+          {
+            "StatusCode": "200",
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "ResponseModels": {}
+          }
+        ],
+        "RequestParameters": {},
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "RequestTemplates": {
+            "application/json": "{statusCode:200}"
+          },
+          "ContentHandling": "CONVERT_TO_TEXT",
+          "IntegrationResponses": [
+            {
+              "StatusCode": "200",
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'"
+              },
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ],
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "GetChargersByTownLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceChargersTownVar"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false
+      },
+      "DependsOn": [
+        "GetChargersByTownLambdaPermissionApiGateway"
+      ]
     },
     "ApiGatewayMethodChargersTownVarGet": {
       "Type": "AWS::ApiGateway::Method",
@@ -283,53 +358,7 @@
         "GetChargersByTownLambdaPermissionApiGateway"
       ]
     },
-    "ApiGatewayMethodChargersTownVarOptions": {
-      "Type": "AWS::ApiGateway::Method",
-      "Properties": {
-        "HttpMethod": "OPTIONS",
-        "RequestParameters": {},
-        "ResourceId": {
-          "Ref": "ApiGatewayResourceChargersTownVar"
-        },
-        "RestApiId": {
-          "Ref": "ApiGatewayRestApi"
-        },
-        "ApiKeyRequired": false,
-        "AuthorizationType": "NONE",
-        "Integration": {
-          "IntegrationHttpMethod": "POST",
-          "Type": "AWS_PROXY",
-          "Uri": {
-            "Fn::Join": [
-              "",
-              [
-                "arn:",
-                {
-                  "Ref": "AWS::Partition"
-                },
-                ":apigateway:",
-                {
-                  "Ref": "AWS::Region"
-                },
-                ":lambda:path/2015-03-31/functions/",
-                {
-                  "Fn::GetAtt": [
-                    "GetChargersByTownLambdaFunction",
-                    "Arn"
-                  ]
-                },
-                "/invocations"
-              ]
-            ]
-          }
-        },
-        "MethodResponses": []
-      },
-      "DependsOn": [
-        "GetChargersByTownLambdaPermissionApiGateway"
-      ]
-    },
-    "ApiGatewayDeployment1770308501686": {
+    "ApiGatewayDeployment1770309417947": {
       "Type": "AWS::ApiGateway::Deployment",
       "Properties": {
         "RestApiId": {
@@ -338,6 +367,7 @@
         "StageName": "dev"
       },
       "DependsOn": [
+        "ApiGatewayMethodChargersTownVarOptions",
         "ApiGatewayMethodChargersTownVarGet",
         "ApiGatewayMethodChargersTownVarOptions"
       ]
@@ -470,7 +500,7 @@
     "GetChargersByTownLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetChargersByTownLambdaVersionMKfacJ26HOaUAH4zCHawyOZ9wK6S93K2aRf3pOepC0"
+        "Ref": "GetChargersByTownLambdaVersionPHavgd3AP13FwUeUvZEJNcNgtsAVU81B16HY3iBs8"
       },
       "Export": {
         "Name": "sls-ev-punjaci-rvtech-dev-GetChargersByTownLambdaFunctionQualifiedArn"

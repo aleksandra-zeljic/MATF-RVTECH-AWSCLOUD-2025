@@ -7,7 +7,7 @@
     "down": "docker compose down -v",
     "deploy": "serverless deploy",
     "redeploy": "npm run down && npm run up && sleep 5 && npm run deploy",
-    "deploy-frontend-fixed-bucket": "awslocal s3 sync ./web s3://punjaci-website"
+    "deploy-frontend-fixed-bucket": "awslocal s3 sync ./web s3://punjaci-website-rvtech"
   },
   "devDependencies": {
     "serverless": "^3.40.0",

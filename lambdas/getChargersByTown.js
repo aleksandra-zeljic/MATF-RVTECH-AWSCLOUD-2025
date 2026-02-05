@@ -17,7 +17,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const ALLOWED_ORIGIN =
   process.env.ALLOWED_ORIGIN ||
-  "http://punjaci-website.s3-website.localhost.localstack.cloud:4566";
+  "http://punjaci-website-rvtech.s3-website.localhost.localstack.cloud:4566";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
